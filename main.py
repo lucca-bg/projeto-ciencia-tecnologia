@@ -7,8 +7,25 @@ from scipy import signal
 import tempfile
 import os
 import uuid
+import mimetypes
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
 
 app = FastAPI(title="Guitar Tablature API", version="1.0.0")
+
+app.mount(
+    "/assets",
+    StaticFiles(directory="frontend/dist/assets"),
+    name="assets"
+)
+
+
+@app.get("/")
+def home():
+    return FileResponse(
+        "frontend/dist/index.html"
+    )
 
 # Enable CORS for frontend
 app.add_middleware(
@@ -99,8 +116,8 @@ def detect_note_in_segment(segment, sr, guitar_freqs, guitar_notes, guitar_posit
         sr=sr,
         fmin=librosa.note_to_hz('E2'),
         fmax=librosa.note_to_hz('E4'),
-        frame_length=2048,
-        hop_length=512,
+        frame_length=4096,
+        hop_length=1024,
     )
     f0_values = [float(x) for x in f0[~np.isnan(f0)]]
     if not f0_values:
@@ -187,13 +204,26 @@ async def upload_audio(file: UploadFile = File(...)):
         session_id = str(uuid.uuid4())
         
         # Save uploaded file temporarily
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as tmp:
+        extension = ".wav"
+
+        if file.content_type:
+            extension = mimetypes.guess_extension(file.content_type) or ".wav"
+
+
+        with tempfile.NamedTemporaryFile(
+            delete=False,
+            suffix=extension
+        ) as tmp:
             content = await file.read()
             tmp.write(content)
             tmp_path = tmp.name
         
         # Load and process audio
-        y, sr = librosa.load(tmp_path, sr=None)
+        y, sr = librosa.load(
+            tmp_path,
+            sr=44100,
+            mono=True
+        )
         y = preprocess_audio(y, sr)
         
         # Detect notes
@@ -231,6 +261,7 @@ async def upload_audio(file: UploadFile = File(...)):
             'session_id': session_id,
             'first_note': first_note,
             'num_notes_detected': len(sequence),
+            'audio_duration': round(len(y)/sr,2),
             'options': options,
             'sequence_preview': [
                 {

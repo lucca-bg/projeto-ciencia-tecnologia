@@ -12,6 +12,9 @@ function App() {
   const [selectedOption, setSelectedOption] = useState(null); // Which option user selected
   const [result, setResult] = useState(null);                // The final tablature result
   const [error, setError] = useState(null);                  // Error messages
+  const [recording, setRecording] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState(null);
+  const [audioChunks, setAudioChunks] = useState([]);
 
   const API_BASE = 'http://localhost:8000'; // Backend URL
 
@@ -20,6 +23,85 @@ function App() {
     setFile(e.target.files[0]);
     setError(null);
   };
+  const startRecording = async () => {
+
+  try {
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true
+    });
+
+
+    const recorder = new MediaRecorder(stream);
+
+
+    let chunks = [];
+
+
+    recorder.ondataavailable = (event) => {
+
+      if(event.data.size > 0){
+        chunks.push(event.data);
+      }
+
+    };
+
+
+    recorder.onstop = () => {
+
+      const audioBlob = new Blob(
+        chunks,
+        {
+          type: "audio/webm"
+        }
+      );
+
+
+      const recordedFile = new File(
+        [audioBlob],
+        "recording.webm",
+        {
+          type:"audio/webm"
+        }
+      );
+
+
+      setFile(recordedFile);
+
+    };
+
+
+    recorder.start();
+
+
+    setAudioChunks(chunks);
+    setMediaRecorder(recorder);
+    setRecording(true);
+
+
+  } catch(error){
+
+    setError(
+      "Could not access microphone"
+    );
+
+    console.error(error);
+
+  }
+
+  };
+
+const stopRecording = () => {
+
+    if(mediaRecorder){
+
+        mediaRecorder.stop();
+
+        setRecording(false);
+
+    }
+
+};
 
   // Upload file to backend
   const handleUpload = async () => {
@@ -130,6 +212,24 @@ function App() {
                 className="file-input"
               />
             </div>
+            <div className="record-area">
+              <button
+                onClick={
+                  recording
+                  ? stopRecording
+                  : startRecording
+                }
+                className="btn btn-secondary"
+              >
+              {
+               recording
+               ?
+               "⏹ Stop Recording"
+               :
+               "🎙 Record Guitar"
+              }
+              </button>
+            </div>            
             <button onClick={handleUpload} disabled={loading} className="btn btn-primary">
               {loading ? 'Processing...' : 'Upload & Detect Notes'}
             </button>
