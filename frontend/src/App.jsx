@@ -56,7 +56,7 @@ function App() {
       setRecording(true);
     } catch(error){
       setError(
-        "Microphone access denied"
+        "Acesso ao microfone negado"
       );
     }
   };
@@ -147,7 +147,7 @@ function App() {
   return (
     <div className="app">
       <div className="container">
-        <h1>Gerador de Tablatura</h1>
+        <h1>Gerador Automático de Tablatura</h1>
 
         {/* Mensagem de erro */}
         {error && <div className="error">{error}</div>}

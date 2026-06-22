@@ -46,7 +46,6 @@ h3 {
   margin: 20px 0 15px;
 }
 
-/* STEP CONTAINER */
 .step {
   display: flex;
   flex-direction: column;
@@ -58,7 +57,6 @@ p {
   font-size: 1.05em;
 }
 
-/* ERROR MESSAGE */
 .error {
   background: #fee;
   border-left: 4px solid #f33;
@@ -68,7 +66,6 @@ p {
   margin-bottom: 20px;
 }
 
-/* FILE UPLOAD */
 .upload-area {
   border: 2px dashed #667eea;
   border-radius: 8px;
@@ -95,7 +92,6 @@ p {
   display: none;
 }
 
-/* OPTIONS */
 .options {
   display: flex;
   flex-direction: column;
@@ -133,7 +129,6 @@ p {
   font-weight: 500;
 }
 
-/* BUTTONS */
 .btn {
   padding: 12px 24px;
   font-size: 1em;
@@ -170,7 +165,6 @@ p {
   color: white;
 }
 
-/* TABLATURE BOX */
 .tablature-box {
   background: #1e1e1e;
   color: #00ff00;
@@ -187,7 +181,6 @@ p {
   line-height: 1.6;
 }
 
-/* SEQUENCE TABLE */
 .sequence-table {
   width: 100%;
   border-collapse: collapse;
@@ -212,7 +205,23 @@ p {
   background: #f8f9ff;
 }
 
-/* RESPONSIVE */
+.step {
+  text-align: center;
+}
+
+.record-area {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+}
+
+.upload-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 @media (max-width: 600px) {
   .container {
     padding: 20px;
