@@ -36,10 +36,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Store processing state in memory (use DB in production)
 processing_state = {}
 
-# Guitar configuration
+# Configuração padrão da guitarra
+## Caso seja expandido um dia (Ex. para baixo), deverão ser incluídos novas configurações
 OPEN_STRINGS = ['E2', 'A2', 'D3', 'G3', 'B3', 'E4']
 NUM_FRETS = 12
 
@@ -202,14 +202,9 @@ async def upload_audio(file: UploadFile = File(...)):
     """Upload and detect notes from audio file"""
     try:
         session_id = str(uuid.uuid4())
-        
-        # Save uploaded file temporarily
         extension = ".wav"
-
         if file.content_type:
             extension = mimetypes.guess_extension(file.content_type) or ".wav"
-
-
         with tempfile.NamedTemporaryFile(
             delete=False,
             suffix=extension
@@ -218,7 +213,6 @@ async def upload_audio(file: UploadFile = File(...)):
             tmp.write(content)
             tmp_path = tmp.name
         
-        # Load and process audio
         y, sr = librosa.load(
             tmp_path,
             sr=44100,
@@ -226,7 +220,6 @@ async def upload_audio(file: UploadFile = File(...)):
         )
         y = preprocess_audio(y, sr)
         
-        # Detect notes
         guitar_freqs, guitar_notes, guitar_positions = build_guitar_notes()
         sequence = build_note_sequence(y, sr, guitar_freqs, guitar_notes, guitar_positions)
         
@@ -234,16 +227,15 @@ async def upload_audio(file: UploadFile = File(...)):
             os.unlink(tmp_path)
             raise HTTPException(status_code=400, detail="No notes detected in audio")
         
-        # Store state
         processing_state[session_id] = {
             'sequence': sequence,
             'guitar_freqs': guitar_freqs,
             'guitar_notes': guitar_notes,
             'guitar_positions': guitar_positions,
+            'audio_duration': round(len(y)/sr,2),
             'tmp_path': tmp_path
         }
         
-        # Get first note options
         first_note = sequence[0]['note']
         first_candidates = [(pos[1], pos[0]) for n, pos in zip(guitar_notes, guitar_positions) if n == first_note]
         
@@ -290,7 +282,6 @@ async def process_with_position(session_id: str, choice: int):
         guitar_notes = state['guitar_notes']
         guitar_positions = state['guitar_positions']
         
-        # Get first note candidates and apply choice
         first_note = sequence[0]['note']
         first_candidates = [(pos[1], pos[0]) for n, pos in zip(guitar_notes, guitar_positions) if n == first_note]
         
@@ -301,7 +292,6 @@ async def process_with_position(session_id: str, choice: int):
         first_position = (int(chosen_string), int(chosen_fret))
         sequence[0]['tab_pos'] = first_position
         
-        # Rebuild subsequent positions based on proximity
         for i in range(1, len(sequence)):
             prev_pos = sequence[i - 1]['tab_pos']
             current_note = sequence[i]['note']
@@ -309,10 +299,8 @@ async def process_with_position(session_id: str, choice: int):
             if tab_pos is not None:
                 sequence[i]['tab_pos'] = (int(tab_pos[0]), int(tab_pos[1]))
         
-        # Generate tablature
         tab = generate_tablature(sequence)
         
-        # Clean up
         if state['tmp_path']:
             os.unlink(state['tmp_path'])
         del processing_state[session_id]

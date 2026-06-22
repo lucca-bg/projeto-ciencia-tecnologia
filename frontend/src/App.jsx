@@ -3,107 +3,72 @@ import axios from 'axios';
 import './App.css';
 
 function App() {
-  // State variables - these are like memory for the component
-  const [file, setFile] = useState(null);                    // The uploaded audio file
-  const [loading, setLoading] = useState(false);             // Is it processing?
-  const [step, setStep] = useState('upload');                // Which step: 'upload', 'select', or 'result'
-  const [sessionId, setSessionId] = useState(null);          // Session ID from backend
-  const [options, setOptions] = useState([]);                // First note position options
-  const [selectedOption, setSelectedOption] = useState(null); // Which option user selected
-  const [result, setResult] = useState(null);                // The final tablature result
-  const [error, setError] = useState(null);                  // Error messages
+
+  const [file, setFile] = useState(null);                    
+  const [loading, setLoading] = useState(false);             
+  const [step, setStep] = useState('upload');                
+  const [sessionId, setSessionId] = useState(null);          
+  const [options, setOptions] = useState([]);                
+  const [selectedOption, setSelectedOption] = useState(null); 
+  const [result, setResult] = useState(null);                
+  const [error, setError] = useState(null);                  
   const [recording, setRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [audioChunks, setAudioChunks] = useState([]);
 
-  const API_BASE = 'http://localhost:8000'; // Backend URL
+  //URL do Backend
+  const API_BASE = 'http://localhost:8000'; 
 
-  // Handle file selection
   const handleFileChange = (e) => {
     setFile(e.target.files[0]);
     setError(null);
   };
   const startRecording = async () => {
-
-  try {
-
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: true
-    });
-
-
-    const recorder = new MediaRecorder(stream);
-
-
-    let chunks = [];
-
-
-    recorder.ondataavailable = (event) => {
-
-      if(event.data.size > 0){
-        chunks.push(event.data);
-      }
-
-    };
-
-
-    recorder.onstop = () => {
-
-      const audioBlob = new Blob(
-        chunks,
-        {
-          type: "audio/webm"
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true
+      });
+      const recorder = new MediaRecorder(stream);
+      let chunks = [];
+      recorder.ondataavailable = (event) => {
+        if(event.data.size > 0){
+          chunks.push(event.data);
         }
+      };
+      recorder.onstop = () => {
+        const audioBlob = new Blob(
+          chunks,
+          {
+            type: "audio/webm"
+          }
+        );
+        const audioFile = new File(
+          [audioBlob],
+          "guitar_recording.webm",
+          {
+            type:"audio/webm"
+          }
+        );
+        setFile(audioFile);
+      };
+      recorder.start();
+      setMediaRecorder(recorder);
+      setRecording(true);
+    } catch(error){
+      setError(
+        "Microphone access denied"
       );
-
-
-      const recordedFile = new File(
-        [audioBlob],
-        "recording.webm",
-        {
-          type:"audio/webm"
-        }
-      );
-
-
-      setFile(recordedFile);
-
-    };
-
-
-    recorder.start();
-
-
-    setAudioChunks(chunks);
-    setMediaRecorder(recorder);
-    setRecording(true);
-
-
-  } catch(error){
-
-    setError(
-      "Could not access microphone"
-    );
-
-    console.error(error);
-
-  }
-
+    }
   };
 
-const stopRecording = () => {
-
+  const stopRecording = () => {
     if(mediaRecorder){
-
-        mediaRecorder.stop();
-
-        setRecording(false);
-
+      mediaRecorder.stop();
+      setRecording(false);
     }
+  };  
 
-};
-
-  // Upload file to backend
+  // Upload do arquivo selecionado
   const handleUpload = async () => {
     if (!file) {
       setError('Please select a file');
@@ -114,36 +79,31 @@ const stopRecording = () => {
     setError(null);
 
     try {
-      // Create FormData (required for file upload)
       const formData = new FormData();
       formData.append('file', file);
 
-      // Send to backend
       const response = await axios.post(`${API_BASE}/api/upload`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      // Extract data from response
       const { session_id, first_note, options: noteOptions, num_notes_detected } = response.data;
 
-      // Store session ID (needed for next step)
       setSessionId(session_id);
       setOptions(noteOptions);
-      setStep('select'); // Move to selection step
+      setStep('select'); 
 
-      console.log(`Detected ${num_notes_detected} notes, starting note: ${first_note}`);
+      console.log(`Detectadas ${num_notes_detected} notas, nota inicial: ${first_note}`);
     } catch (err) {
-      setError(`Upload failed: ${err.response?.data?.detail || err.message}`);
+      setError(`Erro no upload: ${err.response?.data?.detail || err.message}`);
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Send selected position to backend
   const handleProcessing = async () => {
     if (selectedOption === null) {
-      setError('Please select a starting position');
+      setError('Selecione uma posição inicial');
       return;
     }
 
@@ -151,7 +111,6 @@ const stopRecording = () => {
     setError(null);
 
     try {
-      // Send session ID and chosen option to backend
       const response = await axios.post(`${API_BASE}/api/process`, null, {
         params: {
           session_id: sessionId,
@@ -159,18 +118,16 @@ const stopRecording = () => {
         }
       });
 
-      // Store result and move to result step
       setResult(response.data);
       setStep('result');
     } catch (err) {
-      setError(`Processing failed: ${err.response?.data?.detail || err.message}`);
+      setError(`Erro no processamento: ${err.response?.data?.detail || err.message}`);
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
-  // Reset everything to start over
   const handleReset = () => {
     setFile(null);
     setLoading(false);
@@ -182,7 +139,6 @@ const stopRecording = () => {
     setError(null);
   };
 
-  // Copy tablature to clipboard
   const copyToClipboard = () => {
     navigator.clipboard.writeText(result.tablature);
     alert('Tablature copied to clipboard!');
@@ -191,18 +147,18 @@ const stopRecording = () => {
   return (
     <div className="app">
       <div className="container">
-        <h1>Guitar Tablature Generator</h1>
+        <h1>Gerador de Tablatura</h1>
 
-        {/* Error message display */}
+        {/* Mensagem de erro */}
         {error && <div className="error">{error}</div>}
 
-        {/* STEP 1: FILE UPLOAD */}
+        {/* PASSO 1: UPLOAD OU GRAVAÇÃO */}
         {step === 'upload' && (
           <div className="step">
-            <h2>Step 1: Upload Audio</h2>
+            <h2>Upload de Áudio</h2>
             <div className="upload-area">
               <label htmlFor="file-input" className="file-label">
-                {file ? `Selected: ${file.name}` : 'Click to select audio file'}
+                {file ? `Selecionado: ${file.name}` : 'Clique para selecionar um arquivo ou grave diretamente do seu microfone'}
               </label>
               <input
                 id="file-input"
@@ -224,23 +180,23 @@ const stopRecording = () => {
               {
                recording
                ?
-               "⏹ Stop Recording"
+               "⏹ Parar gravação"
                :
-               "🎙 Record Guitar"
+               "🎙 Gravar áudio"
               }
               </button>
-            </div>            
+            </div>
             <button onClick={handleUpload} disabled={loading} className="btn btn-primary">
-              {loading ? 'Processing...' : 'Upload & Detect Notes'}
+              {loading ? 'Processando...' : 'Enviar e detectar notas'}
             </button>
           </div>
         )}
 
-        {/* STEP 2: SELECT STARTING POSITION */}
+        {/* PASSO 2: SELECIONAR POSIÇÃO INICIAL */}
         {step === 'select' && (
           <div className="step">
-            <h2>Step 2: Choose Starting Position</h2>
-            <p>Where should we play the first note?</p>
+            <h2>Selecione a Posição Inicial</h2>
+            <p>Em qual posição devemos mostrar a primeira nota?</p>
             <div className="options">
               {options.map((opt) => (
                 <label key={opt.index} className="option-label">
@@ -256,34 +212,34 @@ const stopRecording = () => {
               ))}
             </div>
             <button onClick={handleProcessing} disabled={loading} className="btn btn-primary">
-              {loading ? 'Generating...' : 'Generate Tablature'}
+              {loading ? 'Gerando...' : 'Gerar Tablatura'}
             </button>
           </div>
         )}
 
-        {/* STEP 3: RESULT */}
+        {/* PASSO 3: RESULTADO */}
         {step === 'result' && result && (
           <div className="step">
-            <h2>Step 3: Your Tablature</h2>
+            <h2>Sua Tablatura</h2>
             
             <div className="tablature-box">
               <pre>{result.tablature}</pre>
               <button onClick={copyToClipboard} className="btn btn-secondary">
-                Copy Tablature
+                Copiar Tablatura
               </button>
             </div>
 
             <div className="sequence">
-              <h3>Note Sequence</h3>
+              <h3>Sequência de Notas</h3>
               <table className="sequence-table">
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>Note</th>
-                    <th>String</th>
-                    <th>Fret</th>
-                    <th>Frequency</th>
-                    <th>Time (s)</th>
+                    <th>Nota</th>
+                    <th>Corda</th>
+                    <th>Casa</th>
+                    <th>Frequência</th>
+                    <th>Tempo (s)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -302,7 +258,7 @@ const stopRecording = () => {
             </div>
 
             <button onClick={handleReset} className="btn btn-primary">
-              Process Another File
+              Gerar nova tablatura
             </button>
           </div>
         )}
